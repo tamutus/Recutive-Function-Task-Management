@@ -1,0 +1,995 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// generator dbml {
+//   provider = "prisma-dbml-generator"
+// }
+
+// generator erd {
+//   provider = "prisma-erd-generator"
+//   output   = "./ERD.svg"
+//   theme    = "forest"
+// }
+
+generator markdown {
+  provider = "prisma-markdown"
+  output   = "./ERD.md"
+  title    = "Executive Function App"
+}
+
+generator zod {
+  provider         = "zod-prisma-types"
+  output           = "./generated/zod"
+  useMultipleFiles = true
+}
+
+// generator json_server {
+//   provider = "prisma-json-server-generator"
+//   output   = "./json-server"
+// }
+
+datasource db {
+  provider = "postgresql"
+  url      = env("PG_URL")
+  // url      = "file:./main.db"
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  person   Person? @relation(fields: [personId], references: [id], onDelete: SetNull)
+  personId Int?    @unique
+
+  accounts Account[]
+  sessions Session[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Person {
+  id       Int     @id @default(autoincrement())
+  username String?
+  bio      String?
+  user     User?
+
+  priorities      Priority[]
+  projects        PersonsToProjects[]
+  tasks           Task[]
+  skillPaths      PersonsToSkillPaths[]
+  skills          PersonsToSkills[]
+  privateEnergies PrivateEnergy[]
+  privateTags     PrivateTag[]
+  energies        EnergiesToPersons[]
+
+  editedProjects PersonsToProjectTemplates[]
+  editedTasks    PersonsToTaskTemplates[]
+
+  tagFollows PersonsToTags[]
+
+  projectTags   ProjectTemplatesToTags[]
+  taskTags      TagsToTaskTemplates[]
+  skillTags     SkillsToTags[]
+  skillPathTags SkillPathsToTags[]
+  energyTags    EnergiesToTags[]
+  // edits              Patch[]
+}
+
+/// This is the public template for projects, which individuals can implement as projects of their own. 
+model ProjectTemplate {
+  id                     Int      @id @default(autoincrement())
+  name                   String   @unique
+  info                   String?
+  completionRequirements String?
+  image                  String?
+  color                  String?
+  links                  String[]
+
+  collaborators PersonsToProjectTemplates[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  energies        EnergiesToProjectTemplates[]
+  tags            ProjectTemplatesToTags[]
+  privateEnergies PrivateEnergiesToProjectTemplates[]
+  privateTags     PrivateTagsToProjectTemplates[]
+
+  tasks ProjectTemplatesToTaskTemplates[]
+
+  implementations Project[]
+  // version                Int                               @default(0)
+}
+
+/// Attributions for project template collaborators
+model PersonsToProjectTemplates {
+  person    Person          @relation(fields: [personId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  personId  Int
+  project   ProjectTemplate @relation(fields: [projectId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  projectId Int
+
+  // edits Patch[]
+
+  @@id([personId, projectId])
+}
+
+/// A project can be implemented from a project template, or a person can make their own one-off project. 
+model Project {
+  id                     Int      @id @default(autoincrement())
+  name                   String
+  info                   String?
+  completionRequirements String?
+  color                  String?
+  links                  String[]
+
+  template   ProjectTemplate? @relation(fields: [templateId], references: [id], onUpdate: Cascade, onDelete: SetNull)
+  templateId Int?
+
+  volunteers PersonsToProjects[]
+  tasks      ProjectsToTasks[]
+
+  priorities      PrioritiesToProjects[]
+  energies        EnergiesToProjects[]
+  tags            ProjectsToTags[]
+  privateEnergies PrivateEnergiesToProjects[]
+  privateTags     PrivateTagsToProjects[]
+
+  public    Boolean   @default(false)
+  publicAt  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  startAt   DateTime?
+  startedAt DateTime?
+  dueAt     DateTime?
+  endedAt   DateTime?
+
+  // magnovaProjectTemplateId String?
+}
+
+/// Each person can join multiple projects, and each project can have multiple people working on it. This join table keeps track of who's working on what.
+model PersonsToProjects {
+  person    Person  @relation(fields: [personId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  personId  Int
+  project   Project @relation(fields: [projectId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  projectId Int
+
+  volunteerDate DateTime @default(now())
+
+  @@id([personId, projectId])
+}
+
+/// Project templates will carry task templates, which can be cloned into tasks.
+model TaskTemplate {
+  id                     Int      @id @default(autoincrement())
+  name                   String   @unique
+  info                   String?
+  completionRequirements String?
+  color                  String?
+  links                  String[]
+
+  projects   ProjectTemplatesToTaskTemplates[]
+  precursors TaskTemplateLink[]                @relation("precursor")
+  successors TaskTemplateLink[]                @relation("successor")
+  schedule   Json
+
+  skills          SkillsToTaskTemplates[]
+  tags            TagsToTaskTemplates[]
+  privateTags     PrivateTagsToTaskTemplates[]
+  energies        EnergiesToTaskTemplates[]
+  privateEnergies PrivateEnergiesToTaskTemplates[]
+
+  collaborators   PersonsToTaskTemplates[]
+  implementations Task[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // patchlist              Patchlist
+  // patchlistId            Int
+  // magnovaTaskId String?
+  // version                Int                               @default(0)
+}
+
+/// Relationships between task templates
+model TaskTemplateLink {
+  precursor   TaskTemplate @relation("precursor", fields: [precursorId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  precursorId Int
+  successor   TaskTemplate @relation("successor", fields: [successorId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  successorId Int
+
+  linkType LinkType @default(SUPPORTS)
+
+  @@id([precursorId, successorId])
+}
+
+/// The relationships between tasks can vary. These are the types of relationships we have identified thus far.
+enum LinkType {
+  BLOCKS
+  SUPPORTS
+  ENERGIZES
+  AUGMENTS
+}
+
+/// Attributions for task template collaborators.
+model PersonsToTaskTemplates {
+  person   Person       @relation(fields: [personId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  personId Int
+  task     TaskTemplate @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taskId   Int
+
+  // edits Patch[]
+
+  @@id([personId, taskId])
+}
+
+/// A task can be implemented from a task template, or a person can make their own one-off to-do. 
+model Task {
+  id    Int      @id @default(autoincrement())
+  name  String
+  info  String?
+  color String?
+  links String[]
+
+  template   TaskTemplate? @relation(fields: [templateId], references: [id], onUpdate: Cascade, onDelete: SetNull)
+  templateId Int?
+
+  precursors TaskLink[] @relation("precursor")
+  successors TaskLink[] @relation("successor")
+
+  projects ProjectsToTasks[]
+  work     TaskWork[]
+
+  skills          SkillsToTasks[]
+  priorities      PrioritiesToTasks[]
+  tags            TagsToTasks[]
+  privateTags     PrivateTagsToTasks[]
+  energies        EnergiesToTasks[]
+  privateEnergies PrivateEnergiesToTasks[]
+
+  person   Person? @relation(fields: [personId], references: [id], onUpdate: Cascade, onDelete: SetNull)
+  personId Int?
+
+  public    Boolean   @default(false)
+  publicAt  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  startAt   DateTime?
+  startedAt DateTime?
+  dueAt     DateTime?
+  endedAt   DateTime?
+}
+
+/// Relationships between tasks
+model TaskLink {
+  precursor   Task @relation("precursor", fields: [precursorId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  precursorId Int
+  successor   Task @relation("successor", fields: [successorId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  successorId Int
+
+  linkType LinkType @default(SUPPORTS)
+
+  @@id([precursorId, successorId])
+}
+
+/// Single sessions of work on a task. These track energy measurements 
+model TaskWork {
+  id     Int     @id @default(autoincrement())
+  task   Task    @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taskId Int
+  notes  String?
+
+  startedAt DateTime?
+  endedAt   DateTime?
+
+  energyChanges        EnergiesToTaskWorks[]
+  privateEnergyChanges PrivateEnergiesToTaskWorks[]
+}
+
+/// Connections between projects and tasks. This encourages tasks that help you reach multiple goals. Also stores how many of this task is needed by a given project.
+model ProjectTemplatesToTaskTemplates {
+  project   ProjectTemplate @relation(fields: [projectId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  projectId Int
+  task      TaskTemplate    @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taskId    Int
+
+  /// Number of tasks that a project should create from this template when deploying a project template. Default is 1, and 0 means there's no count—either it should just be done a lot or 
+  count    Int  @default(1)
+  schedule Json
+
+  @@id([projectId, taskId])
+}
+
+/// m-n join table of projects and tasks.
+model ProjectsToTasks {
+  project   Project @relation(fields: [projectId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  projectId Int
+  task      Task    @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taskId    Int
+
+  @@id([projectId, taskId])
+}
+
+/// Tags can be applied to basically everything. They can be followed, which means your feed will show those things.
+model Tag {
+  id    Int     @id @default(autoincrement())
+  name  String  @unique
+  info  String?
+  nsfw  Boolean @default(false)
+  color String?
+
+  projectTemplates ProjectTemplatesToTags[]
+  taskTemplates    TagsToTaskTemplates[]
+  priorities       PrioritiesToTags[]
+  energies         EnergiesToTags[]
+  privateEnergies  PrivateEnergiesToTags[]
+  skills           SkillsToTags[]
+  paths            SkillPathsToTags[]
+
+  followers PersonsToTags[]
+
+  projects ProjectsToTags[]
+  tasks    TagsToTasks[]
+}
+
+/// Private tags, where a person can't have more than one tag of the same name.
+model PrivateTag {
+  id    Int     @id @default(autoincrement())
+  name  String
+  info  String?
+  nsfw  Boolean
+  color String?
+
+  person   Person @relation(fields: [personId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  personId Int
+
+  projectTemplates PrivateTagsToProjectTemplates[]
+  projects         PrivateTagsToProjects[]
+  taskTemplates    PrivateTagsToTaskTemplates[]
+  tasks            PrivateTagsToTasks[]
+
+  priorities      PrioritiesToPrivateTags[]
+  energies        EnergiesToPrivateTags[]
+  privateEnergies PrivateEnergiesToPrivateTags[]
+
+  @@unique([personId, name], name: "personalName")
+}
+
+/// Signifies that a Person follows a Tag
+model PersonsToTags {
+  follower   Person @relation(fields: [followerId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  followerId Int
+  tag        Tag    @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId      Int
+
+  @@id([followerId, tagId])
+}
+
+/// Project templates can be tagged
+model ProjectTemplatesToTags {
+  project   ProjectTemplate @relation(fields: [projectId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  projectId Int
+  tag       Tag             @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId     Int
+
+  tagger   Person @relation(fields: [taggerId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taggerId Int
+
+  @@id([projectId, tagId])
+}
+
+/// People can put their own tags on project templates
+model PrivateTagsToProjectTemplates {
+  project      ProjectTemplate @relation(fields: [projectId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  projectId    Int
+  privateTag   PrivateTag      @relation(fields: [privateTagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  privateTagId Int
+
+  @@id([projectId, privateTagId])
+}
+
+/// Task templates can be tagged
+model TagsToTaskTemplates {
+  task   TaskTemplate @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taskId Int
+  tag    Tag          @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId  Int
+
+  tagger   Person @relation(fields: [taggerId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taggerId Int
+
+  @@id([taskId, tagId])
+}
+
+/// People can mark task templates with their personal tags
+model PrivateTagsToTaskTemplates {
+  task   TaskTemplate @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taskId Int
+  tag    PrivateTag   @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId  Int
+
+  @@id([taskId, tagId])
+}
+
+/// People can tag their projects
+model ProjectsToTags {
+  tag       Tag     @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId     Int
+  project   Project @relation(fields: [projectId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  projectId Int
+
+  @@id([tagId, projectId])
+}
+
+/// People can put their personal tags on projects
+model PrivateTagsToProjects {
+  tag       PrivateTag @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId     Int
+  project   Project    @relation(fields: [projectId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  projectId Int
+
+  @@id([tagId, projectId])
+}
+
+/// People can tag tasks
+model TagsToTasks {
+  tag    Tag  @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId  Int
+  task   Task @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taskId Int
+
+  @@id([tagId, taskId])
+}
+
+/// A person can put their personal tags on tasks
+model PrivateTagsToTasks {
+  tag    PrivateTag @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId  Int
+  task   Task       @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taskId Int
+
+  @@id([tagId, taskId])
+}
+
+/// Different activities take or create different kinds of energy. The Energy model serves to generalize those different needs a person has, in a way that a person can subjectively quantify.
+model Energy {
+  id    Int      @id @default(autoincrement())
+  name  String
+  unit  String
+  info  String?
+  color String?
+  music String[]
+
+  projectTemplates EnergiesToProjectTemplates[]
+  taskTemplates    EnergiesToTaskTemplates[]
+  skills           EnergiesToSkills[]
+  tags             EnergiesToTags[]
+
+  experiences EnergiesToPersons[]
+  projects    EnergiesToProjects[]
+  tasks       EnergiesToTasks[]
+  taskWork    EnergiesToTaskWorks[]
+
+  privateTags EnergiesToPrivateTags[]
+}
+
+/// People can define their own forms of energy, and capture the same information as publicly defined ones.
+model PrivateEnergy {
+  person   Person @relation(fields: [personId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  personId Int
+
+  id    Int      @id @default(autoincrement())
+  name  String
+  unit  String
+  info  String?
+  color String?
+  music String[]
+
+  projectTemplates PrivateEnergiesToProjectTemplates[]
+  taskTemplates    PrivateEnergiesToTaskTemplates[]
+  skills           PrivateEnergiesToSkills[]
+  tags             PrivateEnergiesToTags[]
+
+  projects PrivateEnergiesToProjects[]
+  tasks    PrivateEnergiesToTasks[]
+  taskWork PrivateEnergiesToTaskWorks[]
+
+  privateTags PrivateEnergiesToPrivateTags[]
+}
+
+/// The community can denote that certain project templates are relevant to certain forms of energy
+model EnergiesToProjectTemplates {
+  project   ProjectTemplate @relation(fields: [projectId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  projectId Int
+  energy    Energy          @relation(fields: [energyId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  energyId  Int
+
+  links String[]
+  info  String?
+
+  @@id([projectId, energyId])
+}
+
+/// People can denote that project templates are related to their personally defined forms of energy
+model PrivateEnergiesToProjectTemplates {
+  project   ProjectTemplate @relation(fields: [projectId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  projectId Int
+  energy    PrivateEnergy   @relation(fields: [energyId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  energyId  Int
+
+  @@id([projectId, energyId])
+}
+
+/// People can denote that canonically defined forms of energy are relevant to certain projects
+model EnergiesToProjects {
+  project   Project @relation(fields: [projectId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  projectId Int
+  energy    Energy  @relation(fields: [energyId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  energyId  Int
+
+  info  String?
+  links String[]
+
+  @@id([projectId, energyId])
+}
+
+/// People can denote that certain projects are related to their personally defined forms of energy
+model PrivateEnergiesToProjects {
+  project   Project       @relation(fields: [projectId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  projectId Int
+  energy    PrivateEnergy @relation(fields: [energyId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  energyId  Int
+
+  notes String?
+
+  @@id([projectId, energyId])
+}
+
+/// The community can denote that certain task templates are relevant to certain forms of energy
+model EnergiesToTaskTemplates {
+  task     TaskTemplate @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taskId   Int
+  energy   Energy       @relation(fields: [energyId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  energyId Int
+
+  info  String?
+  links String[]
+
+  @@id([taskId, energyId])
+}
+
+/// People can associate their personally defined forms of energy with task templates.
+model PrivateEnergiesToTaskTemplates {
+  task     TaskTemplate  @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taskId   Int
+  energy   PrivateEnergy @relation(fields: [energyId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  energyId Int
+
+  @@id([taskId, energyId])
+}
+
+/// energies that a user associates with a task of theirs
+model EnergiesToTasks {
+  energy   Energy @relation(fields: [energyId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  energyId Int
+  task     Task   @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taskId   Int
+
+  notes String?
+
+  @@id([energyId, taskId])
+}
+
+/// People can connect  to their canonically defined forms of energy.
+model PrivateEnergiesToTasks {
+  energy   PrivateEnergy @relation(fields: [energyId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  energyId Int
+  task     Task          @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taskId   Int
+
+  notes String?
+
+  @@id([energyId, taskId])
+}
+
+/// People can assign tags to forms of energy.
+model EnergiesToTags {
+  energy   Energy @relation(fields: [energyId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  energyId Int
+  tag      Tag    @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId    Int
+
+  tagger   Person @relation(fields: [taggerId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taggerId Int
+
+  info String?
+
+  @@id([energyId, tagId])
+}
+
+/// People can assign their own tags to their canonically defined forms of energy.
+model EnergiesToPrivateTags {
+  energy   Energy     @relation(fields: [energyId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  energyId Int
+  tag      PrivateTag @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId    Int
+
+  notes String?
+
+  @@id([energyId, tagId])
+}
+
+/// People can assign their own tags to their personally defined forms of energy.
+model PrivateEnergiesToPrivateTags {
+  energy   PrivateEnergy @relation(fields: [energyId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  energyId Int
+  tag      PrivateTag    @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId    Int
+
+  @@id([energyId, tagId])
+}
+
+/// People can assign canonical tags to their personally defined forms of energy.
+model PrivateEnergiesToTags {
+  energy   PrivateEnergy @relation(fields: [energyId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  energyId Int
+  tag      Tag           @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId    Int
+
+  @@id([energyId, tagId])
+}
+
+/// This relationship is a dimension of a person's experience over time, so other models refer to this join table with the word expereince.
+model EnergiesToPersons {
+  person   Person @relation(fields: [personId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  personId Int
+  energy   Energy @relation(fields: [energyId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  energyId Int
+
+  measurements EnergyMeasurement[]
+
+  @@id([personId, energyId])
+}
+
+/// Snapshot of one kind of a person's energy at a particular time.
+model EnergyMeasurement {
+  id          Int               @id @default(autoincrement())
+  date        DateTime          @default(now())
+  measurement Decimal
+  experience  EnergiesToPersons @relation(fields: [personId, energyId], references: [personId, energyId], onUpdate: Cascade, onDelete: Cascade)
+  personId    Int
+  energyId    Int
+}
+
+/// Join table to store energy measurements about each task, by chunk of work done.
+model EnergiesToTaskWorks {
+  energy   Energy   @relation(fields: [energyId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  energyId Int
+  work     TaskWork @relation(fields: [workId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  workId   Int
+
+  startingValue Decimal
+  endingValue   Decimal
+
+  @@id([energyId, workId])
+}
+
+/// Join table to store *private* energy measurements about each task, by chunk of work done.
+model PrivateEnergiesToTaskWorks {
+  energy   PrivateEnergy @relation(fields: [energyId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  energyId Int
+  work     TaskWork      @relation(fields: [workId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  workId   Int
+
+  startingValue Decimal
+  endingValue   Decimal
+
+  @@id([energyId, workId])
+}
+
+/// Priorities represent personal goals
+model Priority {
+  id          Int                       @id @default(autoincrement())
+  person      Person                    @relation(fields: [personId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  personId    Int
+  info        String?
+  color       String?
+  tasks       PrioritiesToTasks[]
+  projects    PrioritiesToProjects[]
+  skills      PrioritiesToSkills[]
+  skillPaths  PrioritiesToSkillPaths[]
+  tags        PrioritiesToTags[]
+  privateTags PrioritiesToPrivateTags[]
+}
+
+/// People can assign their tasks to certain priorities of theirs.
+model PrioritiesToTasks {
+  priority   Priority @relation(fields: [priorityId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  priorityId Int
+  task       Task     @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taskId     Int
+
+  notes String?
+
+  @@id([priorityId, taskId])
+}
+
+/// People can assign their projects to certain priorities of theirs.
+model PrioritiesToProjects {
+  project    Project  @relation(fields: [projectId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  projectId  Int
+  priority   Priority @relation(fields: [priorityId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  priorityId Int
+
+  notes String?
+
+  @@id([projectId, priorityId])
+}
+
+/// People can associate specific skills with their priorities.
+model PrioritiesToSkills {
+  priority   Priority @relation(fields: [priorityId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  priorityId Int
+  skill      Skill    @relation(fields: [skillId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  skillId    Int
+
+  notes String?
+
+  @@id([skillId, priorityId])
+}
+
+/// People can associate skill paths with their priorities.
+model PrioritiesToSkillPaths {
+  skillPath   SkillPath @relation(fields: [skillPathId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  skillPathId Int
+  priority    Priority  @relation(fields: [priorityId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  priorityId  Int
+
+  notes String?
+
+  @@id([skillPathId, priorityId])
+}
+
+/// Priorities are all personally defined, but canonical tags can be added to them.
+model PrioritiesToTags {
+  tag        Tag      @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId      Int
+  priority   Priority @relation(fields: [priorityId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  priorityId Int
+
+  notes String?
+
+  @@id([tagId, priorityId])
+}
+
+/// Priorities are all personally defined. Private tags can be added to them.
+model PrioritiesToPrivateTags {
+  tag        PrivateTag @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId      Int
+  priority   Priority   @relation(fields: [priorityId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  priorityId Int
+
+  notes String?
+
+  @@id([tagId, priorityId])
+}
+
+/// A curriculum for a broader area of knowledge or expertise.
+model SkillPath {
+  id   Int     @id @default(autoincrement())
+  name String
+  info String?
+
+  skills     SkillsToSkillPaths[]
+  students   PersonsToSkillPaths[]
+  tags       SkillPathsToTags[]
+  priorities PrioritiesToSkillPaths[]
+}
+
+/// People on skill paths
+model PersonsToSkillPaths {
+  person    Person    @relation(fields: [personId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  personId  Int
+  skillPath SkillPath @relation(fields: [skillId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  skillId   Int
+
+  notes String?
+
+  // status SkillStatus?
+
+  @@id([personId, skillId])
+}
+
+/// Tags on skill paths
+model SkillPathsToTags {
+  skill   SkillPath @relation(fields: [skillId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  skillId Int
+  tag     Tag       @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId   Int
+
+  tagger   Person @relation(fields: [taggerId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taggerId Int
+
+  @@id([skillId, tagId])
+}
+
+/// Skills can involve tasks and be tagged. People can associate skills with their stuff, or templates. People can also connect energies to skills.
+model Skill {
+  id   Int     @id @default(autoincrement())
+  name String
+  info String?
+
+  paths SkillsToSkillPaths[]
+
+  precedes SkillLink[] @relation("precursor")
+  succeeds SkillLink[] @relation("successor")
+
+  taskTemplates   SkillsToTaskTemplates[]
+  tasks           SkillsToTasks[]
+  students        PersonsToSkills[]
+  energies        EnergiesToSkills[]
+  privateEnergies PrivateEnergiesToSkills[]
+  priorities      PrioritiesToSkills[]
+  tags            SkillsToTags[]
+}
+
+/// Tracks which skills are needed for more advanced skills
+model SkillLink {
+  precursor   Skill @relation("precursor", fields: [precursorId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  precursorId Int
+  successor   Skill @relation("successor", fields: [successorId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  successorId Int
+
+  info     String?
+  hourGate Decimal
+
+  @@id([precursorId, successorId])
+}
+
+/// Tracks which skills are in which skill path
+model SkillsToSkillPaths {
+  skill       Skill     @relation(fields: [skillId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  skillId     Int
+  skillPath   SkillPath @relation(fields: [skillPathId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  skillPathId Int
+
+  @@id([skillId, skillPathId])
+}
+
+/// Tracks people's progress in each skill
+model PersonsToSkills {
+  person   Person @relation(fields: [personId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  personId Int
+  skill    Skill  @relation(fields: [skillId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  skillId  Int
+
+  // status SkillStatus?
+
+  @@id([personId, skillId])
+}
+
+/// Tags on skills
+model SkillsToTags {
+  skill   Skill @relation(fields: [skillId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  skillId Int
+  tag     Tag   @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId   Int
+
+  tagger   Person @relation(fields: [taggerId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taggerId Int
+
+  @@id([skillId, tagId])
+}
+
+/// This join table tracks which skills are used in which task templates.
+model SkillsToTaskTemplates {
+  task    TaskTemplate @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taskId  Int
+  skill   Skill        @relation(fields: [skillId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  skillId Int
+
+  @@id([taskId, skillId])
+}
+
+/// This join table tracks which skills are used in which tasks. Since people can customize tasks, they should also be able to denote for their own purposes whether a task they've customized uses a given skill.
+model SkillsToTasks {
+  task    Task  @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taskId  Int
+  skill   Skill @relation(fields: [skillId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  skillId Int
+
+  @@id([taskId, skillId])
+}
+
+/// People can link different forms of energy to skills and describe the relationship.
+model EnergiesToSkills {
+  skill    Skill  @relation(fields: [skillId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  skillId  Int
+  energy   Energy @relation(fields: [energyId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  energyId Int
+
+  notes String?
+
+  @@id([skillId, energyId])
+}
+
+/// People can link their personal forms of energy to skills and describe the relationship.
+model PrivateEnergiesToSkills {
+  skill    Skill         @relation(fields: [skillId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  skillId  Int
+  energy   PrivateEnergy @relation(fields: [energyId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  energyId Int
+
+  notes String?
+
+  @@id([skillId, energyId])
+}
+
+// model Patchlist {
+//   id       Int           @id @default(autoincrement())
+//   root     Int
+//   rootType RootType
+//   patches  Patch[]
+//   task     TaskTemplate? @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: SetNull)
+//   taskId   Int?
+// }
+
+// model Patch {
+//   id       Int       @id @default(autoincrement())
+//   editor   Person?   @relation(fields: [editorId], references: [id], onUpdate: Cascade, onDelete: SetNull)
+//   editorId Int?
+//   patch    Json
+//   list     Patchlist @relation(fields: [listId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+//   listId   Int
+// }
+
+// enum RootType {
+//   PROJECT_TEMPLATE
+//   TASK_TEMPLATE
+// }
+
+/// Different levels of affinity a person can have for a skill
+enum SkillStatus {
+  DISLIKES
+  WANTS
+  HELP
+  LEARNING
+  HAS
+  MENTOR
+  EXPERT
+}
