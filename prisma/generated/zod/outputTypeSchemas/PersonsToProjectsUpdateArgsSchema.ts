@@ -1,0 +1,27 @@
+import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
+import { PersonsToProjectsIncludeSchema } from '../inputTypeSchemas/PersonsToProjectsIncludeSchema'
+import { PersonsToProjectsUpdateInputSchema } from '../inputTypeSchemas/PersonsToProjectsUpdateInputSchema'
+import { PersonsToProjectsUncheckedUpdateInputSchema } from '../inputTypeSchemas/PersonsToProjectsUncheckedUpdateInputSchema'
+import { PersonsToProjectsWhereUniqueInputSchema } from '../inputTypeSchemas/PersonsToProjectsWhereUniqueInputSchema'
+import { PersonArgsSchema } from "../outputTypeSchemas/PersonArgsSchema"
+import { ProjectArgsSchema } from "../outputTypeSchemas/ProjectArgsSchema"
+// Select schema needs to be in file to prevent circular imports
+//------------------------------------------------------
+
+export const PersonsToProjectsSelectSchema: z.ZodType<Prisma.PersonsToProjectsSelect> = z.object({
+  personId: z.boolean().optional(),
+  projectId: z.boolean().optional(),
+  volunteerDate: z.boolean().optional(),
+  person: z.union([z.boolean(),z.lazy(() => PersonArgsSchema)]).optional(),
+  project: z.union([z.boolean(),z.lazy(() => ProjectArgsSchema)]).optional(),
+}).strict()
+
+export const PersonsToProjectsUpdateArgsSchema: z.ZodType<Prisma.PersonsToProjectsUpdateArgs> = z.object({
+  select: PersonsToProjectsSelectSchema.optional(),
+  include: PersonsToProjectsIncludeSchema.optional(),
+  data: z.union([ PersonsToProjectsUpdateInputSchema,PersonsToProjectsUncheckedUpdateInputSchema ]),
+  where: PersonsToProjectsWhereUniqueInputSchema,
+}).strict()
+
+export default PersonsToProjectsUpdateArgsSchema;
