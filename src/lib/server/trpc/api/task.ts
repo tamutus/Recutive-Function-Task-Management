@@ -1,32 +1,57 @@
-import { publicProcedure, router } from '$tb/t';
-import TaskCreateInputSchema from '$tIn/TaskCreateInputSchema';
+import z from 'zod';
+
+import TaskUncheckedCreateInputSchema from '$tIn/TaskUncheckedCreateInputSchema';
 import TaskUpdateInputSchema from '$tIn/TaskUpdateInputSchema';
-import TaskModelSchema from '$tModel/TaskSchema';
 import TaskWhereUniqueInputSchema from '$tIn/TaskWhereUniqueInputSchema';
 
+import { router } from '$tb/t';
+import { shieldedProcedure } from '$tb/shield';
+import { fetchAuthedUser } from '$lib/server/user';
+
 export const taskRouter = router({
-	create: publicProcedure.input(TaskCreateInputSchema).mutation(async ({ ctx, input }) => {
-		return await ctx.prisma.task.create({
-			data: input
-		});
-	}),
-	delete: publicProcedure.input(TaskWhereUniqueInputSchema).mutation(async ({ ctx, input }) => {
+	create: shieldedProcedure
+		.input(TaskUncheckedCreateInputSchema)
+		.mutation(async ({ ctx, input }) => {
+			const user = await fetchAuthedUser(ctx);
+			if (!user?.person?.id) return;
+
+			return await ctx.prisma.task.create({
+				data: {
+					name: input.name,
+					personId: user.person.id
+				}
+			});
+		}),
+	delete: shieldedProcedure.input(TaskWhereUniqueInputSchema).mutation(async ({ ctx, input }) => {
 		return await ctx.prisma.task.delete({ where: input });
 	}),
-	edit: publicProcedure.input(TaskModelSchema.partial()).mutation(async ({ ctx, input }) => {
-		return await ctx.prisma.task.update({
-			where: {
-				id: input.id
-			},
-			data: {
-				name: input.name
-			}
-		});
-	}),
-	get: publicProcedure.input(TaskWhereUniqueInputSchema).query(async ({ ctx, input }) => {
+	edit: shieldedProcedure
+		.input(z.object({ id: z.number().int(), update: TaskUpdateInputSchema }))
+		.mutation(async ({ ctx, input }) => {
+			const user = await fetchAuthedUser(ctx);
+			if (!user?.person?.id) return;
+			return await ctx.prisma.task.update({
+				where: {
+					id: input.id,
+					person: {
+						id: user.person.id
+					}
+				},
+				data: {
+					name: input.update.name
+				}
+			});
+		}),
+	get: shieldedProcedure.input(TaskWhereUniqueInputSchema).query(async ({ ctx, input }) => {
 		return await ctx.prisma.task.findUnique({ where: input });
 	}),
-	list: publicProcedure.query(async ({ ctx }) => {
-		return await ctx.prisma.task.findMany();
+	list: shieldedProcedure.query(async ({ ctx }) => {
+		const user = await fetchAuthedUser(ctx);
+		if (!user?.person) return;
+		return ctx.prisma.task.findMany({
+			where: {
+				personId: user.person.id
+			}
+		});
 	})
 });

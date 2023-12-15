@@ -233,17 +233,54 @@ model TaskTemplateLink {
   successor   TaskTemplate @relation("successor", fields: [successorId], references: [id], onUpdate: Cascade, onDelete: Cascade)
   successorId Int
 
-  linkType LinkType @default(SUPPORTS)
+  linkType LinkType @default(ENABLES)
 
   @@id([precursorId, successorId])
 }
 
-/// The relationships between tasks can vary. These are the types of relationships we have identified thus far.
+/// Relationships between tasks with polarity of effect. These words aren't, strictly, all antonyms, but they reflect opposite changes to workflow that a task could have while avoiding as many misleading meanings as possible.
+///
+/// Possibility: enables/prevents
+/// Existence: causes/replaces
+/// Difficulty: eases/toughens
+/// Speed: accelerates/pauses/slows
+/// Deadline: fastforwards/prolongs
+/// Impact: amplifies/weakens
+/// Revision: extends/fixes/undoes
+/// 
+/// Directionality is presumed by all of these relationships, so if you're making a link from A to B and it's backwards, A and B should be switched rather than looking for a different type of relationship.
 enum LinkType {
-  BLOCKS
-  SUPPORTS
-  ENERGIZES
-  AUGMENTS
+  /// A ENABLES B: Doing A makes B possible.
+  ENABLES
+  /// A PREVENTS B: Doing A makes B "impossible".
+  PREVENTS
+  /// A STARTS B: Doing A causes B to begin.
+  STARTS
+  /// A REPLACES B: Doing A renders B obsolete.
+  REPLACES
+  /// A AMPLIFIES B: Doing A causes B to have greater effect.
+  AMPLIFIES
+  /// A WEAKENS B: Doing A reduces the impact of B.
+  WEAKENS
+  /// A EXTENDS B: Doing A will 
+  /// A FIXES B: Doing A will resolve some oversight or error with B.
+  FIXES
+  /// A UNDOES B: Doing A will counteract B's effects.
+  UNDOES
+  /// A EASES B: Doing A makes it easier to do the work of B.
+  EASES
+  /// A TOUGHENS B: Doing A makes it harder to do the work of B.
+  TOUGHENS
+  /// A FASTFORWARDS B: Doing A makes it possible to finish B by an earlier date.
+  FASTFORWARDS
+  /// A ACCELERATES B: Doing A reduces the hours of work it takes to finish B.
+  ACCELERATES
+  /// A PAUSES B: Doing A puts B on hold.
+  PAUSES
+  /// A SLOWS B: Doing A will increase the hours of work it takes to finish B.
+  SLOWS
+  /// A PROLONGS B: Doing A pushes back the earliest date by which B could be finished.
+  PROLONGS
 }
 
 /// Attributions for task template collaborators.
@@ -302,7 +339,7 @@ model TaskLink {
   successor   Task @relation("successor", fields: [successorId], references: [id], onUpdate: Cascade, onDelete: Cascade)
   successorId Int
 
-  linkType LinkType @default(SUPPORTS)
+  linkType LinkType @default(ENABLES)
 
   @@id([precursorId, successorId])
 }

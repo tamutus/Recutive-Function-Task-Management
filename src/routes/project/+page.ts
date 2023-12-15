@@ -2,8 +2,8 @@ import { trpc } from '$tf/client';
 import type { PageLoadEvent, PageLoad } from './$types';
 
 export const load: PageLoad = async (event: PageLoadEvent) => {
-	event.depends('task:list');
+	event.depends('project:list');
 	return {
-		tasks: trpc(event).task.list.query()
+		projects: trpc(event).project.list.query()
 	};
 };

@@ -3,6 +3,7 @@ import type { PageLoadEvent, PageLoad } from './$types';
 
 export const load: PageLoad = async (event: PageLoadEvent) => {
 	return {
+		parent: event.parent(),
 		task: trpc(event).task.get.query({ id: Number(event.params.id) })
 	};
 };

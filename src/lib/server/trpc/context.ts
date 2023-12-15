@@ -4,7 +4,8 @@ import prismaClient from '$lib/server/prismaClient';
 
 export async function createContext(event: RequestEvent) {
 	return {
-		prisma: prismaClient
+		prisma: prismaClient,
+		session: await event.locals.getSession()
 	};
 }
 
