@@ -4,6 +4,6 @@ export const load: LayoutServerLoad = async (event: LayoutServerLoadEvent) => {
 	event.depends('task:list');
 	return {
 		session: await event.locals.getSession(),
-		tasks: trpc(event).task.list.query()
+		tasks: await trpc(event).task.list.query()
 	};
 };

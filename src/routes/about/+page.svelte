@@ -76,7 +76,7 @@
 		</li>
 		<li class="bg-amber-700">
 			<h3>Brown</h3>
-			<p>Serious and reliable.</p>
+			<p>Serious and reliable. This is work.</p>
 		</li>
 		<li class="bg-pink-400">
 			<h3>Pink</h3>

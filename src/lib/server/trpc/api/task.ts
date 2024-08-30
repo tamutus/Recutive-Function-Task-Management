@@ -7,6 +7,7 @@ import TaskWhereUniqueInputSchema from '$tIn/TaskWhereUniqueInputSchema';
 import { router } from '$tb/t';
 import { shieldedProcedure } from '$tb/shield';
 import { fetchAuthedUser } from '$lib/server/user';
+import { error } from '@sveltejs/kit';
 
 export const taskRouter = router({
 	create: shieldedProcedure
@@ -38,7 +39,10 @@ export const taskRouter = router({
 					}
 				},
 				data: {
-					name: input.update.name
+					name: input.update.name,
+					info: input.update.info,
+					color: input.update.color,
+					links: input.update.links
 				}
 			});
 		}),
@@ -47,7 +51,9 @@ export const taskRouter = router({
 	}),
 	list: shieldedProcedure.query(async ({ ctx }) => {
 		const user = await fetchAuthedUser(ctx);
-		if (!user?.person) return;
+		if (!user?.person) {
+			error(404, new Error('No person found'));
+		}
 		return ctx.prisma.task.findMany({
 			where: {
 				personId: user.person.id

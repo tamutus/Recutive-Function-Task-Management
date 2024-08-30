@@ -2,17 +2,164 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+	font-size: 20px;
+	line-height: 30px;
+	font-weight: 400;
+}
+@media screen and (max-width: 800px) {
+	:root {
+		font-size: 16px;
+		line-height: 24px;
+	}
+}
+@media screen and (max-width: 600px) {
+	:root {
+		font-size: 14px;
+		line-height: 21px;
+	}
+}
+
 ::selection {
 	color: #4c2a78;
 	background-color: #8cf59c;
 }
-option {
-	background-color: #135f6f;
+
+section {
+	padding-top: 100px;
 }
+footer {
+	padding-top: 75px;
+	text-align: center;
+}
+section > h2 {
+	font-size: 4rem;
+}
+ul {
+	list-style: none;
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+	transition: font-size 0.2s 0s ease-out;
+}
+h1 {
+	font-weight: 700;
+	font-size: 3.3em;
+	line-height: 1.1em;
+	margin-left: 0;
+}
+h2 {
+	font-weight: 400;
+	font-size: 2.5em;
+	line-height: 1.1em;
+	text-align: center;
+	margin: 20px auto 30px auto;
+}
+h3 {
+	font-weight: 400;
+	font-size: 2em;
+	line-height: 1.1em;
+	text-align: center;
+}
+h4 {
+	font-size: 1.75rem;
+	line-height: 1.1em;
+}
+h5 {
+	font-size: 1.5rem;
+	line-height: 1.1em;
+}
+h6 {
+	font-size: 1.25rem;
+	line-height: 1.1em;
+}
+p {
+	font-size: 1rem;
+	margin: 20px 30px;
+	line-height: 1.7em;
+}
+li {
+	font-size: 1rem;
+	margin: 20px 30px;
+	line-height: 2em;
+}
+button {
+	font-size: 1.5em;
+	padding: 0.3em 0.3em 0.5em 0.3em;
+	color: white;
+	transition:
+		color 0.45s ease,
+		background-position 0.5s cubic-bezier(0.2, 1, 0.8, 0.9);
+	background-image: linear-gradient(
+		to bottom,
+		rgb(121, 68, 189) 35%,
+		rgb(180, 25, 97) 50%,
+		rgb(211, 97, 32) 95%
+	);
+	background-size: 100% 200%;
+	border-radius: 0 0 20px 0;
+}
+button:hover:not(:disabled),
+button:focus:not(:disabled) {
+	background-position: 0 115%;
+	color: rgb(228, 255, 110);
+}
+a,
+a *,
+button,
+button * {
+	cursor: pointer;
+}
+a {
+	/* color: rgba(169, 10, 243, 0.75); */
+	color: rgba(164, 90, 199, 0.86);
+	transition:
+		color 0.2s ease-out,
+		-webkit-text-stroke-color 0.2s ease-out;
+	font-size: inherit;
+}
+a:hover {
+	color: rgba(228, 122, 52, 0.877);
+}
+
+input {
+	border: solid rgb(255, 234, 136);
+	border-width: 0 0 1px 0;
+	padding: 0 8px;
+	color: rgb(105, 1, 1);
+	background: linear-gradient(
+		to bottom,
+		rgb(247, 186, 255) 25%,
+		rgb(255, 214, 187) 45%,
+		rgb(255, 248, 155) 95%
+	);
+	transition:
+		color 0.35s ease,
+		background-position 0.25s cubic-bezier(0.2, 1, 0.75, 0.9);
+	background-size: 100% 200%;
+	border-radius: 5px 20px 5px 15px;
+}
+
+input:hover:not(:disabled) {
+	background-position: 0 30%;
+}
+input:focus:not(:disabled) {
+	background-position: 0 108%;
+	color: rgb(3, 124, 3);
+}
+/* option {
+	background-color: #135f6f;
+} */
+
 /* 
  * inline JS on the homepage uses these styles to collapse sections 
  */
-.collapsible-section {
+/* .collapsible-section {
 	max-height: 90vh;
 	overflow-y: auto;
 	transition: max-height 0.45s ease;
@@ -27,9 +174,9 @@ option {
 .collapsible-section ol,
 .collapsible-section ul {
 	margin-left: 2em;
-}
+} */
 /* For showing whether a section is open or closed */
-.section-collapser .expand-icon {
+/* .section-collapser .expand-icon {
 	display: inline-block;
 	transform-origin: center;
 	transform: scaleY(1.6);
@@ -38,10 +185,10 @@ option {
 }
 .section-collapser .expand-icon.collapsed {
 	transform: scaleY(0.6);
-}
+} */
 
 /* extra styling for the sidebar widgets */
-.sidebar .widget-title {
+/* .sidebar .widget-title {
 	margin-bottom: 12px;
 }
 .sidebar .zeen-widget {
@@ -101,9 +248,9 @@ option {
 #recent-posts-2 li a:hover,
 #recent-posts-2 li a:focus {
 	color: yellow;
-}
+} */
 /* Signup buttons, generally */
-.mc4wp-form-fields input[type='submit'],
+/* .mc4wp-form-fields input[type='submit'],
 .hub-link {
 	background-image: linear-gradient(130deg, rgb(203, 207, 255) 0%, rgb(16, 42, 182) 80%);
 	color: rgb(237, 225, 149) !important;
@@ -131,13 +278,13 @@ p:has(.hub-link),
 	margin: auto;
 	text-align: center;
 	text-transform: uppercase;
-}
+} */
 
 /* PayPal button */
-img#donate-button {
+/* img#donate-button {
 	display: block;
 	margin: auto;
-}
+} */
 
 /*7777777*/
 /* Prism */
@@ -271,7 +418,7 @@ img#donate-button {
 }
 
 /*Styles for project cards + accessory features*/
-.project-cards {
+/* .project-cards {
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: space-between;
@@ -309,4 +456,4 @@ img#donate-button {
 }
 .project-card a.read-more-btn {
 	color: #000066;
-}
+} */

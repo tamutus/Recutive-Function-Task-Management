@@ -93,6 +93,7 @@ model Person {
   priorities      Priority[]
   projects        PersonsToProjects[]
   tasks           Task[]
+  taskWork        TaskWork[]
   skillPaths      PersonsToSkillPaths[]
   skills          PersonsToSkills[]
   privateEnergies PrivateEnergy[]
@@ -152,12 +153,15 @@ model PersonsToProjectTemplates {
 
 /// A project can be implemented from a project template, or a person can make their own one-off project. 
 model Project {
-  id                     Int      @id @default(autoincrement())
-  name                   String
-  info                   String?
+  id    Int      @id @default(autoincrement())
+  name  String
+  info  String?
+  color String?
+  links String[]
+
+  problemStatement       String?
   completionRequirements String?
-  color                  String?
-  links                  String[]
+  completionReview       String?
 
   template   ProjectTemplate? @relation(fields: [templateId], references: [id], onUpdate: Cascade, onDelete: SetNull)
   templateId Int?
@@ -247,6 +251,9 @@ model TaskTemplateLink {
 /// Deadline: fastforwards/prolongs
 /// Impact: amplifies/weakens
 /// Revision: extends/fixes/undoes
+/// Concurrency: 
+/// Doubling up:
+/// Competes with:
 /// 
 /// Directionality is presumed by all of these relationships, so if you're making a link from A to B and it's backwards, A and B should be switched rather than looking for a different type of relationship.
 enum LinkType {
@@ -297,11 +304,12 @@ model PersonsToTaskTemplates {
 
 /// A task can be implemented from a task template, or a person can make their own one-off to-do. 
 model Task {
-  id    Int      @id @default(autoincrement())
-  name  String
-  info  String?
-  color String?
-  links String[]
+  id               Int      @id @default(autoincrement())
+  name             String
+  info             String?
+  completionReview String?
+  color            String?
+  links            String[]
 
   template   TaskTemplate? @relation(fields: [templateId], references: [id], onUpdate: Cascade, onDelete: SetNull)
   templateId Int?
@@ -346,10 +354,12 @@ model TaskLink {
 
 /// Single sessions of work on a task. These track energy measurements 
 model TaskWork {
-  id     Int     @id @default(autoincrement())
-  task   Task    @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
-  taskId Int
-  notes  String?
+  id       Int     @id @default(autoincrement())
+  task     Task    @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  taskId   Int
+  notes    String?
+  person   Person  @relation(fields: [personId], references: [id])
+  personId Int
 
   startedAt DateTime?
   endedAt   DateTime?
@@ -365,9 +375,10 @@ model ProjectTemplatesToTaskTemplates {
   task      TaskTemplate    @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
   taskId    Int
 
-  /// Number of tasks that a project should create from this template when deploying a project template. Default is 1, and 0 means there's no count—either it should just be done a lot or 
-  count    Int  @default(1)
-  schedule Json
+  /// Number of tasks that a project should create from this template when deploying a project template. Default is 1, and 0 means there's no count—either it should just be done a lot or as desired
+  count           Int     @default(1)
+  schedule        Json
+  problemSolvency String?
 
   @@id([projectId, taskId])
 }
@@ -378,6 +389,8 @@ model ProjectsToTasks {
   projectId Int
   task      Task    @relation(fields: [taskId], references: [id], onUpdate: Cascade, onDelete: Cascade)
   taskId    Int
+
+  problemSolvency String?
 
   @@id([projectId, taskId])
 }
@@ -567,6 +580,12 @@ model PrivateEnergy {
   taskWork PrivateEnergiesToTaskWorks[]
 
   privateTags PrivateEnergiesToPrivateTags[]
+}
+
+/// Contexts need to be worked in somehow
+model Context {
+  id   Int    @id @default(autoincrement())
+  name String
 }
 
 /// The community can denote that certain project templates are relevant to certain forms of energy
@@ -793,7 +812,8 @@ model PrioritiesToProjects {
   priority   Priority @relation(fields: [priorityId], references: [id], onUpdate: Cascade, onDelete: Cascade)
   priorityId Int
 
-  notes String?
+  weight Decimal?
+  notes  String?
 
   @@id([projectId, priorityId])
 }
